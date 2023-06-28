@@ -1,0 +1,85 @@
+﻿@page "/"
+@using NearestLocationApp.Data;
+@using DataAccessLibrary;
+@using System.Linq;
+
+@inject ExcelParser ExcelParser;
+@inject GoogleMapsApi GoogleMapsApi;
+@inject ICordinatesData CordinatesData;
+
+<PageTitle>Index</PageTitle>
+
+<h1>Hello, world!</h1>
+ 
+<b>Input a excel file with destination-cordinates here:</b>
+<InputFile OnChange="@ImportExcelFile" accept=".xlsx, .xls, .csv" />
+<br/>
+<br/>
+<br/>
+
+<b>Input a origin-cordinate here: </b>
+<input placeholder="Latitude" @bind="@InputCordinate.Latitude" @bind:event="oninput" type="number" />
+<input placeholder="Longitude" @bind="@InputCordinate.Longitude" @bind:event="oninput" type="number" />
+
+<button @onclick="@SortDestinations">Sort</button>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Distance</th>
+            <th>Time</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var destination in Destinations)
+        {
+            <tr>
+                <td>@destination.Item1.Latitude</td>
+                <td>@destination.Item1.Longitude</td>
+                <td>@destination.Item2.DistanceString</td>
+                <td>@destination.Item2.DurationString</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+@code
+{
+    public List<(Cordinate, Ride)> Destinations = new List<(Cordinate, Ride)>();
+    public Cordinate InputCordinate = new Cordinate();
+
+    private List<Cordinate> _cordinates = new List<Cordinate>();
+
+    async Task ImportExcelFile(InputFileChangeEventArgs e)
+    {
+        _cordinates = await ExcelParser.ParseCordinates(e);
+        await CordinatesData.SetCordinates(_cordinates);
+        CordinatesToDestinations();
+    }
+
+    public async Task SortDestinations()
+    {
+        Destinations = await GoogleMapsApi.GetRideInformation(Destinations, InputCordinate);
+
+        Destinations = Destinations.OrderByDescending(x => x.Item2.DistanceValue).ToList();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cordinates = await CordinatesData.GetCordinates();
+        CordinatesToDestinations();
+        await base.OnInitializedAsync();
+    }
+
+    private void CordinatesToDestinations()
+    {
+        Destinations.Clear();
+        foreach(var cordinate in _cordinates)
+        {
+            Destinations.Add((cordinate, new Ride()));
+        }
+    }
+}
