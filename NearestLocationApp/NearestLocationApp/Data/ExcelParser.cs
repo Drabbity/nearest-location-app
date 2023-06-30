@@ -31,12 +31,14 @@ namespace NearestLocationApp.Data
 
                             for (int row = startRow; row <= endRow; row++)
                             {
-                                var latitude = workSheet.GetValue(row, startColumn);
-                                var longitude = workSheet.GetValue(row, startColumn + 1);
+                                var locationName = workSheet.GetValue(row, startColumn);
+                                var latitude = workSheet.GetValue(row, startColumn + 1);
+                                var longitude = workSheet.GetValue(row, startColumn + 2);
 
-                                if(latitude != null && longitude != null)
+                                if(latitude != null && longitude != null && locationName != null)
                                 {
                                     Cordinate cordinate = new Cordinate();
+                                    cordinate.LocationName = locationName.ToString(); ;
                                     cordinate.Latitude = latitude.ToString();
                                     cordinate.Longitude = longitude.ToString();
 

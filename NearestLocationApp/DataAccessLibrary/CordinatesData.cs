@@ -26,7 +26,7 @@ namespace DataAccessLibrary
         {
             await _sqlDataAccess.SetData("DELETE FROM dbo.Cordinates", new { });
 
-            string sql = "INSERT INTO dbo.Cordinates (Latitude, Longitude) VALUES (@Latitude, @Longitude)";
+            string sql = "INSERT INTO dbo.Cordinates (Latitude, Longitude, LocationName) VALUES (@Latitude, @Longitude, @LocationName)";
 
             foreach (var cordinate in cordinates)
             {

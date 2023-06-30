@@ -26,6 +26,7 @@
 <table class="table">
     <thead>
         <tr>
+            <th>Location Name</th>
             <th>Latitude</th>
             <th>Longitude</th>
             <th>Distance</th>
@@ -36,6 +37,7 @@
         @foreach (var destination in Destinations)
         {
             <tr>
+                <td>@destination.Item1.LocationName</td>
                 <td>@destination.Item1.Latitude</td>
                 <td>@destination.Item1.Longitude</td>
                 <td>@destination.Item2.DistanceString</td>
@@ -64,7 +66,7 @@
     {
         Destinations = await GoogleMapsApi.GetRideInformation(Destinations, InputCordinate);
 
-        Destinations = Destinations.OrderByDescending(x => x.Item2.DistanceValue).ToList();
+        Destinations = Destinations.OrderBy(x => x.Item2.DistanceValue).ToList();
     }
 
     protected override async Task OnInitializedAsync()
