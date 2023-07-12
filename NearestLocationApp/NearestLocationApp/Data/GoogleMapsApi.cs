@@ -1,9 +1,8 @@
 ﻿using DataAccessLibrary;
 using Newtonsoft.Json;
-using System.Data.Entity.Core.Common.CommandTrees.ExpressionBuilder;
-using System.Linq.Expressions;
 using System.Text;
 using System.Text.RegularExpressions;
+using static System.Net.WebRequestMethods;
 
 namespace NearestLocationApp.Data
 {
@@ -18,61 +17,103 @@ namespace NearestLocationApp.Data
             _config = config;
         }
 
-
-
-        public async Task<List<(Cordinate, Ride)>> GetRideInformation(List<(Cordinate, Ride)> destinations, Cordinate origin)
+        public async Task<List<Direction>> GetRideInformation(List<Direction> cars, string pickUpZipCode, string dropOffZipCode)
         {
-            if(origin.Latitude != "" && origin.Longitude != "")
+            if (pickUpZipCode == "" || dropOffZipCode == "" || cars.Count == 0)
+                return ResetValues(cars);
+            
+            HttpClient client = new HttpClient();
+
+            string address = BuildAddress(pickUpZipCode, dropOffZipCode);
+            dynamic json = await GetJson(client, address);
+
+            if(json.status != "OK")
+                return ResetValues(cars);
+
+            Ride pickUpDropOffRide = new Ride();
+
+            pickUpDropOffRide.DistanceValue = json.rows[0].elements[0].distance.value;
+            pickUpDropOffRide.DistanceString = json.rows[0].elements[0].distance.text;
+
+            pickUpDropOffRide.DurationValue = json.rows[0].elements[0].duration.value;
+            pickUpDropOffRide.DurationString = json.rows[0].elements[0].duration.text;
+
+            address = BuildAddress(MergeZipCodes(cars), pickUpZipCode);
+            json = await GetJson(client, address);
+
+            if (json.status != "OK")
+                return ResetValues(cars);
+
+            int index = 0;
+            foreach (var row in json.rows)
             {
-                var destinationsStringBuilder = new StringBuilder();
+                var element = row.elements[0];
 
-                foreach (var destination in destinations)
+                if (element.status == "OK")
                 {
-                    destinationsStringBuilder.Append(destination.Item1.Latitude + "," + destination.Item1.Longitude + '|');
+                    Direction direction = new Direction(cars[index].Car);
+
+                    direction.ToPickUpRide.DistanceValue = element.distance.value;
+                    direction.ToPickUpRide.DistanceString = element.distance.text;
+
+                    direction.ToPickUpRide.DurationValue = element.duration.value;
+                    direction.ToPickUpRide.DurationString = element.duration.text;
+
+                    direction.ToDropOffRide.DistanceValue = pickUpDropOffRide.DistanceValue;
+                    direction.ToDropOffRide.DistanceString = pickUpDropOffRide.DistanceString;
+
+                    direction.ToDropOffRide.DurationValue = pickUpDropOffRide.DurationValue;
+                    direction.ToDropOffRide.DurationString = pickUpDropOffRide.DurationString;
+
+                    direction.MapLink = $"https://www.google.com/maps/dir/{cars[index].Car.ZipCode},+USA/{pickUpZipCode},+USA/{dropOffZipCode},+USA";
+                    
+                    cars[index] = direction;
                 }
-                destinationsStringBuilder.Remove(destinationsStringBuilder.Length - 1, 1);
-
-                var originString = origin.Latitude + "," + origin.Longitude;
-
-                string address = $"https://maps.googleapis.com/maps/api/distancematrix/json?destinations={destinationsStringBuilder.ToString()}&origins={originString}&key={ _config.GetConnectionString(GoogleMapsApiKey) }";
-                address = Regex.Replace(address, @"\s+", String.Empty);
-
-                HttpClient client = new HttpClient();
-                string jsonString = await client.GetStringAsync(address);
-
-                dynamic json = JsonConvert.DeserializeObject(jsonString);
-
-                if(json.status == "OK")
+                else
                 {
-                    int index = 0;
-
-                    foreach (var element in json.rows[0].elements)
-                    {
-                        if (element.status == "OK")
-                        {
-                            destinations[index].Item2.DistanceValue = element.distance.value;
-                            destinations[index].Item2.DistanceString = element.distance.text;
-
-                            destinations[index].Item2.DurationValue = element.duration.value;
-                            destinations[index].Item2.DurationString = element.duration.text;
-                        }
-                        else
-                        {
-                            destinations[index].Item2.ResetValues();
-                        }
-                        index++;
-                    }
-                }                
+                    cars[index].ToPickUpRide.ResetValues();
+                    cars[index].ToDropOffRide.ResetValues();
+                }
+                index++;
             }
-            else
+
+            return cars;
+        }
+        private string MergeZipCodes(List<Direction> cars)
+        {
+            var zipCodeStringBuilder = new StringBuilder();
+
+            foreach (var car in cars)
             {
-                foreach(var destination in destinations)
-                {
-                    destination.Item2.ResetValues();
-                }
+                zipCodeStringBuilder.Append(car.Car.ZipCode + '|');
+            }
+            zipCodeStringBuilder.Remove(zipCodeStringBuilder.Length - 1, 1);
+
+            return zipCodeStringBuilder.ToString();
+        }
+
+        private string BuildAddress(string origins, string destinations)
+        {
+            string address = $"https://maps.googleapis.com/maps/api/distancematrix/json?origins={origins}&destinations={destinations}&key={_config.GetConnectionString(GoogleMapsApiKey)}";
+            address = Regex.Replace(address, @"\s+", String.Empty);
+            return address;
+        }
+
+        private async Task<dynamic> GetJson(HttpClient client, string address)
+        {
+            string jsonString = await client.GetStringAsync(address);
+            return JsonConvert.DeserializeObject(jsonString);
+        }
+
+        private List<Direction> ResetValues(List<Direction> cars)
+        {
+            foreach (var car in cars)
+            {
+                car.ToPickUpRide.ResetValues();
+                car.ToDropOffRide.ResetValues();
             }
 
-            return destinations;
+            return cars;
         }
     }
 }

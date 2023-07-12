@@ -1,6 +1,4 @@
-﻿using DataAccessLibrary;
-
-namespace NearestLocationApp.Data
+﻿namespace NearestLocationApp.Data
 {
     public class Ride
     {
