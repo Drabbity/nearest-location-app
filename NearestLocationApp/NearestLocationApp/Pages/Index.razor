@@ -38,7 +38,7 @@
         @foreach (var direction in CarDirections)
         {
             <tr>
-                <td><a href="@direction.MapLink">destination.Car.CarName</a></td>
+                <td><a href="@direction.MapLink">@destination.Car.CarName</a></td>
                 <td>@direction.Car.ZipCode</td>
                 <td>@direction.ToPickUpRide.DistanceString</td>
                 <td>@direction.ToPickUpRide.DurationString</td>
