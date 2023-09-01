@@ -3,6 +3,6 @@
     public interface ICarsData
     {
         Task<List<Car>> GetCars();
-        Task SetCars(List<Car> cars);
+        Task AddCar(Car car);
     }
 }

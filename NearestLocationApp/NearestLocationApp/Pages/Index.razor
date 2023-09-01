@@ -9,17 +9,9 @@
 
 <PageTitle>Index</PageTitle>
 
-<h1>Hello, world!</h1>
- 
-<b>Input a excel file with cars here:</b>
-<InputFile OnChange="@ImportExcelFile" accept=".xlsx, .xls, .csv" />
-<br/>
-<br/>
-<br/>
-
 <b>Input a pickup-zipcode and dropoff-zipcode here: </b>
-<input placeholder="Pick up zip code" @bind="@pickUpZipCode" @bind:event="oninput" type="number" />
-<input placeholder="Drop off zip code" @bind="@dropOffZipCode" @bind:event="oninput" type="number" />
+<input placeholder="Pick up zip code" @bind="@PickUpZipCode" @bind:event="oninput" type="number" />
+<input placeholder="Drop off zip code" @bind="@DropOffZipCode" @bind:event="oninput" type="number" />
 
 <button @onclick="@SortDestinations">Sort</button>
 
@@ -38,7 +30,7 @@
         @foreach (var direction in CarDirections)
         {
             <tr>
-                <td><a href="@direction.MapLink">@destination.Car.CarName</a></td>
+                <td><a href="@direction.MapLink">@direction.Car.CarName</a></td>
                 <td>@direction.Car.ZipCode</td>
                 <td>@direction.ToPickUpRide.DistanceString</td>
                 <td>@direction.ToPickUpRide.DurationString</td>
@@ -49,24 +41,41 @@
     </tbody>
 </table>
 
+<input placeholder="Car Name" @bind="@CarName" @bind:event="oninput" type="text" />
+<input placeholder="Zip Code" @bind="@CarZipCode" @bind:event="oninput" type="number" />
+
+<button @onclick="@AddCar">Add Car</button>
+
+<p>@test</p>
+
 @code
 {
     public List<Direction> CarDirections = new List<Direction>();
-    public string pickUpZipCode;
-    public string dropOffZipCode;
+    public string PickUpZipCode;
+    public string DropOffZipCode;
+
+    public string CarName;
+    public string CarZipCode;
+
+    public string test = "";
 
     private List<Car> _cars = new List<Car>();
 
-    public async Task ImportExcelFile(InputFileChangeEventArgs e)
+    public async Task AddCar()
     {
-        _cars = await ExcelParser.ParseCars(e);
-        await CarsData.SetCars(_cars);
+        Car newCar = new Car();
+        newCar.CarName = CarName;
+        newCar.ZipCode = CarZipCode;
+
+        await CarsData.AddCar(newCar);
+        _cars.Add(newCar);
+
         CarToCarRides();
     }
 
     public async Task SortDestinations()
     {
-        CarDirections = await GoogleMapsApi.GetRideInformation(CarDirections, pickUpZipCode, dropOffZipCode);
+        CarDirections = await GoogleMapsApi.GetRideInformation(CarDirections, PickUpZipCode, DropOffZipCode);
 
         CarDirections = CarDirections.OrderBy(x => x.ToPickUpRide.DurationValue).ToList();
     }

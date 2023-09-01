@@ -22,16 +22,11 @@ namespace DataAccessLibrary
             return await _sqlDataAccess.GetData<Car, dynamic>(sql, new { });
         }
 
-        public async Task SetCars(List<Car> cars)
+        public async Task AddCar(Car car)
         {
-            await _sqlDataAccess.SetData("DELETE FROM dbo.Cars", new { });
-
             string sql = "INSERT INTO dbo.Cars (CarName, ZipCode) VALUES (@CarName, @ZipCode)";
 
-            foreach (var car in cars)
-            {
-                await _sqlDataAccess.SetData(sql, car);
-            }
+            await _sqlDataAccess.SetData(sql, car);
         }
     }
 }
