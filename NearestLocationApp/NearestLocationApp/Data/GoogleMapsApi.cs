@@ -19,30 +19,24 @@ namespace NearestLocationApp.Data
 
         public async Task<List<Direction>> GetRideInformation(List<Direction> cars, string pickUpZipCode, string dropOffZipCode)
         {
-            if (pickUpZipCode == "" || cars.Count == 0)
+            if (pickUpZipCode == "" || dropOffZipCode == "" || cars.Count == 0)
                 return ResetValues(cars);
             
             HttpClient client = new HttpClient();
-            string address;
-            dynamic json;
 
-            Ride toDropOffRide = new Ride();
-            if(dropOffZipCode != "")
-            {
-                address = BuildAddress(pickUpZipCode, dropOffZipCode);
-                json = await GetJson(client, address);
+            string address = BuildAddress(pickUpZipCode, dropOffZipCode);
+            dynamic json = await GetJson(client, address);
 
-                if (json.status == "OK" && json.rows[0].elements[0].status == "OK")
-                {
-                    dynamic ride = json.rows[0].elements[0];
+            if(json.status != "OK")
+                return ResetValues(cars);
 
-                    toDropOffRide.DistanceValue = ride.distance.value;
-                    toDropOffRide.DistanceString = ride.distance.text;
+            Ride pickUpDropOffRide = new Ride();
 
-                    toDropOffRide.DurationValue = ride.duration.value;
-                    toDropOffRide.DurationString = ride.duration.text;
-                }
-            }  
+            pickUpDropOffRide.DistanceValue = json.rows[0].elements[0].distance.value;
+            pickUpDropOffRide.DistanceString = json.rows[0].elements[0].distance.text;
+
+            pickUpDropOffRide.DurationValue = json.rows[0].elements[0].duration.value;
+            pickUpDropOffRide.DurationString = json.rows[0].elements[0].duration.text;
 
             address = BuildAddress(MergeZipCodes(cars), pickUpZipCode);
             json = await GetJson(client, address);
@@ -65,11 +59,11 @@ namespace NearestLocationApp.Data
                     direction.ToPickUpRide.DurationValue = element.duration.value;
                     direction.ToPickUpRide.DurationString = element.duration.text;
 
-                    direction.ToDropOffRide.DistanceValue = toDropOffRide.DistanceValue;
-                    direction.ToDropOffRide.DistanceString = toDropOffRide.DistanceString;
+                    direction.ToDropOffRide.DistanceValue = pickUpDropOffRide.DistanceValue;
+                    direction.ToDropOffRide.DistanceString = pickUpDropOffRide.DistanceString;
 
-                    direction.ToDropOffRide.DurationValue = toDropOffRide.DurationValue;
-                    direction.ToDropOffRide.DurationString = toDropOffRide.DurationString;
+                    direction.ToDropOffRide.DurationValue = pickUpDropOffRide.DurationValue;
+                    direction.ToDropOffRide.DurationString = pickUpDropOffRide.DurationString;
 
                     direction.MapLink = $"https://www.google.com/maps/dir/{cars[index].Car.ZipCode},+USA/{pickUpZipCode},+USA/{dropOffZipCode},+USA";
                     
@@ -85,7 +79,6 @@ namespace NearestLocationApp.Data
 
             return cars;
         }
-
         private string MergeZipCodes(List<Direction> cars)
         {
             var zipCodeStringBuilder = new StringBuilder();
@@ -101,7 +94,7 @@ namespace NearestLocationApp.Data
 
         private string BuildAddress(string origins, string destinations)
         {
-            string address = $"https://maps.googleapis.com/maps/api/distancematrix/json?origins={origins}&destinations={destinations}&units=imperial&key={_config.GetConnectionString(GoogleMapsApiKey)}";
+            string address = $"https://maps.googleapis.com/maps/api/distancematrix/json?origins={origins}&destinations={destinations}&key={_config.GetConnectionString(GoogleMapsApiKey)}";
             address = Regex.Replace(address, @"\s+", String.Empty);
             return address;
         }
