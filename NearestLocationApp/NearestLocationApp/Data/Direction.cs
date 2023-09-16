@@ -1,20 +1,10 @@
-﻿using DataAccessLibrary;
-
+﻿
 namespace NearestLocationApp.Data
 {
-    public struct Direction
+    public class Direction
     {
-        public Direction(Car car)
-        {
-            Car = car;
-            ToPickUpRide = new Ride();
-            ToDropOffRide = new Ride();
-            MapLink = "";
-        }
-
-        public Car Car { get; set; }
-        public Ride ToPickUpRide { get; set; }
-        public Ride ToDropOffRide { get; set; }
+        public Ride PickUpRide { get; set; } = new Ride();
+        public Ride DropOffRide { get; set; } = new Ride();
         public string MapLink { get; set; }
     }
 }

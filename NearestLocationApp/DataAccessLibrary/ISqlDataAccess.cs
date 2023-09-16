@@ -1,4 +1,5 @@
-﻿namespace DataAccessLibrary
+﻿
+namespace DataAccessLibrary
 {
     public interface ISqlDataAccess
     {

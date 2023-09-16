@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿
 namespace DataAccessLibrary
 {
     public class CarsData : ICarsData
@@ -26,7 +21,7 @@ namespace DataAccessLibrary
         {
             await _sqlDataAccess.SetData("DELETE FROM dbo.Cars", new { });
 
-            string sql = "INSERT INTO dbo.Cars (CarName, ZipCode) VALUES (@CarName, @ZipCode)";
+            string sql = "INSERT INTO dbo.Cars (Name, Location) VALUES (@Name, @Location)";
 
             foreach (var car in cars)
             {

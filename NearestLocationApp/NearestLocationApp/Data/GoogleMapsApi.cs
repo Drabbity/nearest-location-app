@@ -1,8 +1,6 @@
-﻿using DataAccessLibrary;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using System.Text;
 using System.Text.RegularExpressions;
-using static System.Net.WebRequestMethods;
 
 namespace NearestLocationApp.Data
 {
@@ -17,103 +15,121 @@ namespace NearestLocationApp.Data
             _config = config;
         }
 
-        public async Task<List<Direction>> GetRideInformation(List<Direction> cars, string pickUpZipCode, string dropOffZipCode)
+        public async Task<List<Route>> GetRouteInformationList(List<Route> routeList, string pickUpLocation, string dropOffLocation)
         {
-            if (pickUpZipCode == "" || dropOffZipCode == "" || cars.Count == 0)
-                return ResetValues(cars);
+            var client = new HttpClient();
+
+            var dropOffRide = await CalculateDropOffRide(client, pickUpLocation, dropOffLocation);
+
+            var pickUpRides = CalculatePickUpRide(client, routeList, pickUpLocation);
+            var pickUpRideIterator = pickUpRides.GetAsyncEnumerator();
+
+            int i;
+            for (i = 0; await pickUpRideIterator.MoveNextAsync(); i++)
+            {
+                var direction = new Direction();
+
+                if (pickUpRideIterator.Current.Distance.Value != -1)
+                {
+                    direction.PickUpRide = pickUpRideIterator.Current;
+                    direction.DropOffRide = dropOffRide;
+                    direction.MapLink = $"https://www.google.com/maps/dir/{ routeList[i].Car.Location },+USA/{ pickUpLocation },+USA/{ dropOffLocation },+USA";
+                }
+
+                routeList[i].Direction = direction;
+            }
+            for(i += 1; i < routeList.Count; i++)
+            {
+                routeList[i].Direction = new Direction();
+            }
             
-            HttpClient client = new HttpClient();
-
-            string address = BuildAddress(pickUpZipCode, dropOffZipCode);
-            dynamic json = await GetJson(client, address);
-
-            if(json.status != "OK")
-                return ResetValues(cars);
-
-            Ride pickUpDropOffRide = new Ride();
-
-            pickUpDropOffRide.DistanceValue = json.rows[0].elements[0].distance.value;
-            pickUpDropOffRide.DistanceString = json.rows[0].elements[0].distance.text;
-
-            pickUpDropOffRide.DurationValue = json.rows[0].elements[0].duration.value;
-            pickUpDropOffRide.DurationString = json.rows[0].elements[0].duration.text;
-
-            address = BuildAddress(MergeZipCodes(cars), pickUpZipCode);
-            json = await GetJson(client, address);
-
-            if (json.status != "OK")
-                return ResetValues(cars);
-
-            int index = 0;
-            foreach (var row in json.rows)
-            {
-                var element = row.elements[0];
-
-                if (element.status == "OK")
-                {
-                    Direction direction = new Direction(cars[index].Car);
-
-                    direction.ToPickUpRide.DistanceValue = element.distance.value;
-                    direction.ToPickUpRide.DistanceString = element.distance.text;
-
-                    direction.ToPickUpRide.DurationValue = element.duration.value;
-                    direction.ToPickUpRide.DurationString = element.duration.text;
-
-                    direction.ToDropOffRide.DistanceValue = pickUpDropOffRide.DistanceValue;
-                    direction.ToDropOffRide.DistanceString = pickUpDropOffRide.DistanceString;
-
-                    direction.ToDropOffRide.DurationValue = pickUpDropOffRide.DurationValue;
-                    direction.ToDropOffRide.DurationString = pickUpDropOffRide.DurationString;
-
-                    direction.MapLink = $"https://www.google.com/maps/dir/{cars[index].Car.ZipCode},+USA/{pickUpZipCode},+USA/{dropOffZipCode},+USA";
-                    
-                    cars[index] = direction;
-                }
-                else
-                {
-                    cars[index].ToPickUpRide.ResetValues();
-                    cars[index].ToDropOffRide.ResetValues();
-                }
-                index++;
-            }
-
-            return cars;
+            return routeList;
         }
-        private string MergeZipCodes(List<Direction> cars)
+
+        private async Task<Ride> CalculateDropOffRide(HttpClient client, string pickUpLocation, string dropOffLocation)
         {
-            var zipCodeStringBuilder = new StringBuilder();
-
-            foreach (var car in cars)
+            var dropOffRide = new Ride();
+            if (pickUpLocation != "" && dropOffLocation != "")
             {
-                zipCodeStringBuilder.Append(car.Car.ZipCode + '|');
-            }
-            zipCodeStringBuilder.Remove(zipCodeStringBuilder.Length - 1, 1);
+                dynamic json = await GetJson(client, BuildAddress(pickUpLocation, dropOffLocation));
 
-            return zipCodeStringBuilder.ToString();
+                if (json.status == "OK" && json.rows[0].elements[0].status == "OK")
+                {
+                    dynamic ride = json.rows[0].elements[0];
+
+                    dropOffRide = CopyDynamicRide(ride);
+                }
+            }
+
+            return dropOffRide;
+        }
+
+        private async IAsyncEnumerable<Ride> CalculatePickUpRide(HttpClient client, List<Route> routeDict, string pickUpLocation)
+        {
+            if(routeDict.Count > 0 && pickUpLocation != "")
+            {
+                var carLocations = MergeLocations(routeDict);
+                dynamic json = await GetJson(client, BuildAddress(carLocations, pickUpLocation));
+
+                if(json.status == "OK")
+                {
+                    foreach (var row in json.rows)
+                    {
+                        var ride = row.elements[0];
+
+                        if (ride.status == "OK")
+                        {
+                            var newRide = CopyDynamicRide(ride);
+
+                            yield return newRide;
+                        }
+                        else
+                            yield return new Ride();
+                    }
+                }
+            }
+
+            yield break;
+        }
+
+        private static string MergeLocations(List<Route> routeDict)
+        {
+            var locationStringBuilder = new StringBuilder();
+
+            foreach (var route in routeDict)
+            {
+                locationStringBuilder.Append(route.Car.Location + '|');
+            }
+            if(locationStringBuilder.Length > 0)
+                locationStringBuilder.Remove(locationStringBuilder.Length - 1, 1);
+
+            return locationStringBuilder.ToString();
         }
 
         private string BuildAddress(string origins, string destinations)
         {
-            string address = $"https://maps.googleapis.com/maps/api/distancematrix/json?origins={origins}&destinations={destinations}&key={_config.GetConnectionString(GoogleMapsApiKey)}";
+            var address = $"https://maps.googleapis.com/maps/api/distancematrix/json?origins={origins}&destinations={destinations}&units=imperial&key={_config.GetConnectionString(GoogleMapsApiKey)}";
             address = Regex.Replace(address, @"\s+", String.Empty);
             return address;
         }
 
-        private async Task<dynamic> GetJson(HttpClient client, string address)
+        private static async Task<dynamic> GetJson(HttpClient client, string address)
         {
-            string jsonString = await client.GetStringAsync(address);
+            var jsonString = await client.GetStringAsync(address);
             return JsonConvert.DeserializeObject(jsonString);
         }
 
-        private List<Direction> ResetValues(List<Direction> cars)
+        private static Ride CopyDynamicRide(dynamic ride)
         {
-            foreach (var car in cars)
-            {
-                car.ToPickUpRide.ResetValues();
-                car.ToDropOffRide.ResetValues();
-            }
+            Ride newRide = new();
 
-            return cars;
+            newRide.Distance.Value = ride.distance.value;
+            newRide.Distance.Text = ride.distance.text;
+
+            newRide.Duration.Value = ride.duration.value;
+            newRide.Duration.Text = ride.duration.text;
+
+            return newRide;
         }
     }
 }

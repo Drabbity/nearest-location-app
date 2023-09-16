@@ -18,32 +18,32 @@
 <br/>
 
 <b>Input a pickup-zipcode and dropoff-zipcode here: </b>
-<input placeholder="Pick up zip code" @bind="@pickUpZipCode" @bind:event="oninput" type="number" />
-<input placeholder="Drop off zip code" @bind="@dropOffZipCode" @bind:event="oninput" type="number" />
+<input placeholder="Pick up zip code" @bind="@PickUpLocation" @bind:event="oninput" type="number" />
+<input placeholder="Drop off zip code" @bind="@DropOffLocation" @bind:event="oninput" type="number" />
 
 <button @onclick="@SortDestinations">Sort</button>
 
 <table class="table">
     <thead>
         <tr>
-            <th>Car Name</th>
-            <th>Zip Code</th>
-            <th>From car to pick up distance</th>
-            <th>From car to pick up duration</th>
-            <th>From pick up to drop off distance</th>
-            <th>From pick up to drop off duration</th>
+            <th>Unit</th>
+            <th>Location</th>
+            <th>DeadHead Miles</th>
+            <th>ETA to PU</th>
+            <th>Loaded Miles</th>
+            <th>Transit Time</th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var direction in CarDirections)
+        @foreach (var route in RouteList)
         {
             <tr>
-                <td><a href="@direction.MapLink">@destination.Car.CarName</a></td>
-                <td>@direction.Car.ZipCode</td>
-                <td>@direction.ToPickUpRide.DistanceString</td>
-                <td>@direction.ToPickUpRide.DurationString</td>
-                <td>@direction.ToDropOffRide.DistanceString</td>
-                <td>@direction.ToDropOffRide.DurationString</td>
+                <td><a href="@route.Direction.MapLink">@route.Car.Name</a></td>
+                <td>@route.Car.Location</td>
+                <td>@route.Direction.PickUpRide.Distance.Text</td>
+                <td>@route.Direction.PickUpRide.Duration.Text</td>
+                <td>@route.Direction.DropOffRide.Distance.Text</td>
+                <td>@route.Direction.DropOffRide.Duration.Text</td>
             </tr>
         }
     </tbody>
@@ -51,39 +51,44 @@
 
 @code
 {
-    public List<Direction> CarDirections = new List<Direction>();
-    public string pickUpZipCode;
-    public string dropOffZipCode;
+    public List<Route> RouteList = new List<Route>();
+
+    public string PickUpLocation = "";
+    public string DropOffLocation = "";
 
     private List<Car> _cars = new List<Car>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cars = await CarsData.GetCars();
+        CreateRouteList();
+
+        await base.OnInitializedAsync();
+    }
 
     public async Task ImportExcelFile(InputFileChangeEventArgs e)
     {
         _cars = await ExcelParser.ParseCars(e);
         await CarsData.SetCars(_cars);
-        CarToCarRides();
+        CreateRouteList();
     }
 
     public async Task SortDestinations()
     {
-        CarDirections = await GoogleMapsApi.GetRideInformation(CarDirections, pickUpZipCode, dropOffZipCode);
+        RouteList = await GoogleMapsApi.GetRouteInformationList(RouteList, PickUpLocation, DropOffLocation);
 
-        CarDirections = CarDirections.OrderBy(x => x.ToPickUpRide.DurationValue).ToList();
+        RouteList = RouteList.OrderBy(route => route.Direction.PickUpRide.Distance.Value == -1).ThenBy(route => route.Direction.PickUpRide.Distance.Value).ToList();
     }
 
-    protected override async Task OnInitializedAsync()
+    private void CreateRouteList()
     {
-        _cars = await CarsData.GetCars();
-        CarToCarRides();
-        await base.OnInitializedAsync();
-    }
-
-    private void CarToCarRides()
-    {
-        CarDirections.Clear();
+        RouteList.Clear();
         foreach(var car in _cars)
         {
-            CarDirections.Add(new Direction(car));
+            var newRoute = new Route();
+            newRoute.Car = car;
+
+            RouteList.Add(newRoute);
         }
     }
 }
