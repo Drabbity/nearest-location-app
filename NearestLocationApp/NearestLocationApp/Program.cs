@@ -12,6 +12,7 @@ builder.Services.AddSingleton<ExcelParser>();
 builder.Services.AddSingleton<GoogleMapsApi>();
 builder.Services.AddTransient<ISqlDataAccess, SqlDataAccess>();
 builder.Services.AddTransient<ICarsData, CarsData>();
+builder.Services.AddTransient<IDriversData, DriversData>();
 
 var app = builder.Build();
 

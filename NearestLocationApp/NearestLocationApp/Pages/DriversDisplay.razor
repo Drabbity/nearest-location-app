@@ -1,0 +1,51 @@
+﻿@page "/drivers"
+@using DataAccessLibrary;
+@using System.Linq;
+
+@inject IDriversData DriversData
+
+<PageTitle>Drivers</PageTitle>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Driver number</th>
+            <th>Driver name</th>
+            <th>Plate number</th>
+            <th>Company name</th>
+            <th>Truck type</th>
+            <th>Truck dims</th>
+            <th>Payload</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var driver in DriverList)
+        {
+            <tr>
+                <td>@driver.Id</td>
+                <td>@driver.Name</td>
+                <td>@driver.PlateNumber</td>
+                <td>@driver.CompanyName</td>
+                <td>@driver.TruckType</td>
+                <td>
+                    <tr>Length: @driver.TruckLength</tr>
+                    <tr>Width:  @driver.TruckWidth</tr>
+                    <tr>Height: @driver.TruckHeight</tr>
+                </td>
+                <td>@driver.Payload</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code
+{
+    public List<Driver> DriverList = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        DriverList = await DriversData.GetDrivers();
+
+        await base.OnInitializedAsync();
+    }
+}

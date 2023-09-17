@@ -1,0 +1,81 @@
+﻿@page "/drivers/add"
+@using DataAccessLibrary;
+@using System.Linq;
+
+@inject IDriversData DriversData
+@inject NavigationManager NavigationManager;
+
+<PageTitle>DriverRegistration</PageTitle>
+
+<EditForm Model="@Driver" OnValidSubmit="@AddDriver">
+    <DataAnnotationsValidator></DataAnnotationsValidator>
+    <ValidationSummary></ValidationSummary>
+        <div class="form-group row">
+            <label class="col-sm-2">Name</label>
+            <div class="col-sm-9">
+                <InputText class="form-control" @bind-Value="@Driver.Name"></InputText>
+            </div>
+        </div>
+    <div class="form-group row">
+        <label class="col-sm-2">Plate Number</label>
+        <div class="col-sm-9">
+            <InputText class="form-control" @bind-Value="@Driver.PlateNumber"></InputText>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="col-sm-2">Company Name</label>
+        <div class="col-sm-9">
+            <InputText class="form-control" @bind-Value="@Driver.CompanyName"></InputText>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="col-sm-2">Truck Type</label>
+        <div class="col-xl-9">
+            <InputSelect class="form-control" @bind-Value="@Driver.TruckType">
+                <option>Cargo van</option>
+                <option>Sprinter van</option>
+                <option>Small straight</option>
+                <option>Small straight w/LG</option>
+                <option>Large straight</option>
+            </InputSelect>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="truckType" class="col-sm-2">Truck Length</label>
+        <div class="col-sm-9">
+            <InputNumber id="companyName" class="form-control" @bind-Value="@Driver.TruckLength"></InputNumber>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="truckType" class="col-sm-2">Truck Width</label>
+        <div class="col-sm-9">
+            <InputNumber id="companyName" class="form-control" @bind-Value="@Driver.TruckWidth"></InputNumber>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="truckType" class="col-sm-2">Truck Height</label>
+        <div class="col-sm-9">
+            <InputNumber id="companyName" class="form-control" @bind-Value="@Driver.TruckHeight"></InputNumber>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="truckType" class="col-sm-2">Truck Payload</label>
+        <div class="col-sm-9">
+            <InputNumber id="companyName" class="form-control" @bind-Value="@Driver.Payload"></InputNumber>
+        </div>
+    </div>
+    <div class="form-group">
+        <button type="submit" class="btn btn-success">Submit</button>
+    </div>
+</EditForm>
+
+@code
+{
+    public Driver Driver = new();
+
+    public async Task AddDriver()
+    {
+        await DriversData.AddDriver(Driver);
+        NavigationManager.NavigateTo("/drivers");
+    }
+}
